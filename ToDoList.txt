@@ -1,0 +1,5 @@
+- compression avec les collapse pour un truc de basse qualité en stockant les collapse pour pouvoir reconstruire le maillage en full  qualité (split), selection des split de reconstruction aléatoire
+- re création progressive d'un split (passage d'un noeud à deux) pour éviter que les changements soit trop moche à l'oeil nus
+- affinage du maillage dans la zone regardé par la caméra
+- affinage du maillage dans les zones d'intérêt (selon le saliency)
+
