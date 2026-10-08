@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
-import obja
 import numpy as np
 import sys
+import argparse
+
+from mesh_stream import obja
 
 class Decimater(obja.Model):
     """
@@ -53,13 +55,19 @@ class Decimater(obja.Model):
 
 def main():
     """
-    Runs the program on the model given as parameter.
+    Runs the program on the model given as argument parameters.
     """
-    np.seterr(invalid = 'raise')
-    model = Decimater()
-    model.parse_file('example/suzanne.obj')
+    parser = argparse.ArgumentParser(description="Run decimate model on a 3D OBJ file.")
+    parser.add_argument("input", help="Input OBJ file")
+    parser.add_argument("output", help="Output OBJA file")
+    args = parser.parse_args()
 
-    with open('example/suzanne.obja', 'w') as output:
+    np.seterr(invalid="raise")
+
+    model = Decimater()
+    model.parse_file(args.input)
+
+    with open(args.output, "w") as output:
         model.contract(output)
 
 

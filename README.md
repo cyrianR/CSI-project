@@ -2,7 +2,7 @@
 
 Implementation of algorithms for progressive transmission of 3D models descibed in [research papers](./papers/). This [project](./papers/ProjetCSI2026.pdf) is part of the ENSEEIHT curriculum for students specialized in Image & Multimedia.
 
-## Developer tutorial
+## Developer tutorial and example
 
 Create a vitrual environment and install dependencies :
 ```
@@ -11,13 +11,24 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Run the server :
+Create an obja model with desired method:
 ```
-./server.py
+mkdir server/data
+python -m mesh_stream.decimate example/suzanne.obj server/data/suzanne-decimate.obja
 ```
 
-Visualize a first example of transmission of 3D models at these urls :
 ```
-http://localhost:8000/?example/bunny.obja
-http://localhost:8000/?example/suzanne.obja
+mkdir server/data
+python -m mesh_stream.progressive_mesh example/suzanne.obj server/data/suzanne-decimate.obja
+```
+
+
+Run the server :
+```
+server/start.py
+```
+
+Visualize transmission of the 3D models :
+```
+http://localhost:8000/?data/suzanne-decimate.obja
 ```

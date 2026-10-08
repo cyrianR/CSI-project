@@ -31,8 +31,9 @@ import cgi
 import threading
 import socket
 import errno
+from pathlib import Path
 
-DATA_DIR = getcwd()
+DATA_DIR = Path(__file__).resolve().parent
 
 
 class ThreadingHTTPServer(ThreadingMixIn, BaseHTTPServer.HTTPServer):
