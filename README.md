@@ -19,7 +19,7 @@ python -m mesh_stream.decimate example/suzanne.obj server/data/suzanne-decimate.
 
 ```
 mkdir server/data
-python -m mesh_stream.progressive_mesh example/suzanne.obj server/data/suzanne-decimate.obja
+python -m mesh_stream.progressive_mesh example/suzanne.obj server/data/suzanne-pm.obja
 ```
 
 
