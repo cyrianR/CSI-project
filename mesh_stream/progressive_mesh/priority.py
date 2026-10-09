@@ -40,4 +40,12 @@ class WeightPriority(PriorityComputer):
         # Calcul des normales de chaque face
         # Savoir quelle face on attribue à quel sommet
         # Calcul le poids de chaque sommet (le plus petit poids en 1er) (differnce entre les normales (?))
+ 
+        
+
+########################### Priorité basé sur QEM (Quadric Error Metric) du 3eme papier ##############################
+# Section 4.1 : Algorithme
+# On associe une matrice symétrique 4*4 Q à chaque sommet et l'erreur au sommet v : v^T Q v
+# Pour une contraction : Q = Q1 + Q2 et l'erreur v^T (Q1+Q2) v
+
         
