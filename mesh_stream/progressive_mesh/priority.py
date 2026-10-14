@@ -43,9 +43,19 @@ class WeightPriority(PriorityComputer):
  
         
 
-########################### Priorité basé sur QEM (Quadric Error Metric) du 3eme papier ##############################
+###################"######## Priorité basé sur QEM (Quadric Error Metric) du 3eme papier ##############################
 # Section 4.1 : Algorithme
 # On associe une matrice symétrique 4*4 Q à chaque sommet et l'erreur au sommet v : v^T Q v
 # Pour une contraction : Q = Q1 + Q2 et l'erreur v^T (Q1+Q2) v
+# On place toutes les paires dans un tas classé par coût, avec la paire au plus bas coût en haut
 
+
+
+###################"######## Priorité basé  Mesh Saliency 4eme papier ###########################################
+# On mesure l'importance visuelle
+# score de saillance élevée quand une zone est variée et complexes (il y a bcp d'info)
+# score de saillancé élevée = forte priorité
+# Section 3 : l'algo
+# On a "l'entropie de la courbure locale" (LCE) (formule en section 3.1)
+# La pondération par les aires avec les cellules de Voronoï (formule 3.2)
         
