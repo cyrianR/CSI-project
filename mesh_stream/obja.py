@@ -71,6 +71,28 @@ class Face:
     def __repr__(self):
         return str(self)
 
+    def __len__(self):
+        return 3
+    
+    def __iter__(self):
+        return iter([self.a, self.b, self.c])
+    
+    def __getitem__(self, index):
+        return [self.a, self.b, self.c][index]
+
+    def __setitem__(self, index, value):
+        if index == 0 or index == -3:
+            self.a = value
+        elif index == 1 or index == -2:
+            self.b = value
+        elif index == 2 or index == -1:
+            self.c = value
+        else:
+            raise IndexError("Face index out of range")
+
+    def __array__(self, dtype=None, copy=None):
+        return np.array([self.a, self.b, self.c], dtype=dtype)
+
 
 class VertexError(Exception):
     """
@@ -191,6 +213,8 @@ class Model:
         """
         Parses an OBJA file.
         """
+        if self.vertices != [] and self.faces != []:
+            raise RuntimeError(f"{self.__class__.__name__}: A mesh is already loaded into model.")
         with open(path, "r") as file:
             for line in file.readlines():
                 self.parse_line(line)
