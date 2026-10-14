@@ -3,3 +3,7 @@
 - affinage du maillage dans la zone regardé par la caméra
 - affinage du maillage dans les zones d'intérêt (selon le saliency)
 
+
+problème : 
+difficulté au moment du split. Comment savoir à quels sommets est associé Vt pour recréer les faces nécessaires?
+On déplace seuelement Vs donc il garde ses faces, mais comme on à les mêmes informations sur Vs et Vt on ne peut pas décider quels liasons enlevé à Vs pour les mettre sur Vt.
