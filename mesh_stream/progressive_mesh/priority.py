@@ -47,15 +47,25 @@ class WeightPriority(PriorityComputer):
 # Section 4.1 : Algorithme
 # On associe une matrice symétrique 4*4 Q à chaque sommet et l'erreur au sommet v : v^T Q v
 # Pour une contraction : Q = Q1 + Q2 et l'erreur v^T (Q1+Q2) v
-# On place toutes les paires dans un tas classé par coût, avec la paire au plus bas coût en haut
+
+# 1. Calcul matrices Q initiales pour chaque sommet. Q = somme des Kp  (voir section 5)
+# 2. Sélection des paires valides :  arêtes directes ou distance < t (section 3.2)
+# 3. Calculer leur coût (erreur) optimale (?)
+# 4. On place toutes les paires dans un tas classé par coût (= l'erreur), avec la paire au plus bas coût en haut
+# 5. Fusionne la paire au plus petit coût
+
 
 
 
 ###################"######## Priorité basé  Mesh Saliency 4eme papier ###########################################
 # On mesure l'importance visuelle
 # score de saillance élevée quand une zone est variée et complexes (il y a bcp d'info)
-# score de saillancé élevée = forte priorité
-# Section 3 : l'algo
-# On a "l'entropie de la courbure locale" (LCE) (formule en section 3.1)
-# La pondération par les aires avec les cellules de Voronoï (formule 3.2)
-        
+# score de saillancé élevée ie entropie haute => forte priorité
+
+# Section 3 : l'Algo
+#   1. Calcul de la courbure locale pour chaque sommet + son voisinage de rayon r
+#   2. les "bins" ?
+#   3. Pondération par les aires avec les cellules de Voronoï (section 3.2) 
+#   4. Calcul de "l'entropie de la courbure locale" (LCE) (section 3.1) : + le score est élevé, + la zone est impt (forte saillance)
+#   5. Approche multi-echelle : On fait varier le rayon (rmax = 0.08 √AM)
+
