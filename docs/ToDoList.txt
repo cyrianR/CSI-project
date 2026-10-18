@@ -1,0 +1,43 @@
+- compression avec les collapse pour un truc de basse qualité en stockant les collapse pour pouvoir reconstruire le maillage en full  qualité (split), selection des split de reconstruction aléatoire
+- re création progressive d'un split (passage d'un noeud à deux) pour éviter que les changements soit trop moche à l'oeil nus
+- affinage du maillage dans la zone regardé par la caméra
+- affinage du maillage dans les zones d'intérêt (selon le saliency)
+
+
+problème : 
+difficulté au moment du split. Comment savoir à quels sommets est associé Vt pour recréer les faces nécessaires?
+On déplace seuelement Vs donc il garde ses faces, mais comme on à les mêmes informations sur Vs et Vt on ne peut pas décider quels liasons enlevé à Vs pour les mettre sur Vt.
+
+---
+
+You can prepare some short document with maximum 3 pages (diagrams or sketches are good !  -done cleanly by hand also acceptable). No oral presentation for this intermediate step.
+
+    Do not spend too much time on this report, but it should witness your (good) progress.
+
+hand in this short document on Moodle before the end of the week (Friday).
+
+    show that you have understood the/your context
+
+        you understood the compression method of your paper
+
+        you know how to use this compression method to create a progressive model
+
+        you have understood the target obja format
+
+
+    show the architecture of the project of what you will develop
+
+        dataflow
+
+        dependencies
+
+        testing (unit)
+
+        testing global
+
+
+    Project management
+
+        tell us who works on which part (how you split the work)
+
+        planning for each part (workload, timeline, etc.)
