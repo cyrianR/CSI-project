@@ -50,9 +50,25 @@ Notre équipe base principalement son projet de transmission progressive de mail
 
 Trois propositions d'implémentation supplémentaires, plus ou moins proche des "Progressive Meshes" nous sont fournies selon les priorités choisies:
 
-- "**Multiresolution Streaming Mesh with Shape Preserving and QoS-like Controlling**" se concentre sur l'ajout des *progressive meshes* à la transmission Internet, avec des simplifications non destructives des modèles avec un système de "*QoS*" qui priorise et contrôle le streaming du maillage selon le réseau. En clair, leur papier vise à proposer un ajustement du niveau de détail selon le débit et la latence du "client". On a notamment trouvé intéressant dans ce papier la structure de "Half Edge Collapse" qui vient compléter l'*Edge Collapse* de Hoppe.
-- "**Surface Simplification Using Quadric Error Metrics**" propose comme mesure d'énergie pour les "Edge Collapses" une métrique quadratique. Cette priorité veut simplifier statistiquement la recherche de la prochaine contraction par approximations, en en agrégeant les quadriques des sommets contractés. Le papier ne propose cependant pas de technique de streaming de mesh, nous offrant avant tout un critère priorité supplémentaire dans notre pipeline.
-- "**Mesh Saliency Analysis via Local Curvature Entropy**" propose une mesure de *saillance* des sommets, *i.e* une recherche de zones d'intérêts, basée sur l'entropie de la courbure locale (entropie de Shannon). Cette méthode veut identifier les régions visuellement importantes d'un maillage. Cette métrique sert de priorité pour les *Edge Collapses*, en simplifiant agressivement les zones peu "saillantes" et en préservant le détail des zones saillantes. Le papier ne propose pas non plus de technique de streaming, mais offre un critère complémentaire à la métrique géométrique de QEM, directement intégrable dans notre pipeline.
+### Multiresolution Streaming Mesh with Shape Preserving and QoS-like Controlling
+
+- "Ce papier se concentre sur l'ajout des *progressive meshes* à la transmission Internet, avec des simplifications non destructives des modèles avec un système de "*QoS*" qui priorise et contrôle le streaming du maillage selon le réseau. En clair, leur papier vise à proposer un ajustement du niveau de détail selon le débit et la latence du "client". On a notamment trouvé intéressant dans ce papier la structure de données "Half Edge Collapse" qui vient compléter l'*Edge Collapse* de Hoppe. C'est cette dernière qui permet un meilleur contrôle topologique lors des contractions.
+
+- Le **mécanisme de "priorité"** du papier se base sur le **poids** des arêtes, défini comme la différences des attributs scalaires $S$ (dont vecteurs normaux) entre ses sommets. Cette méthode va donc mettre dans une queue l'ordre de contraction des arêtes selon le plus faibles poids.
+
+- Complexité à vérifier mais je crois me souvenir aue c'est $O(n \log n)$.
+
+### Surface Simplification Using Quadric Error Metrics
+
+- Ce papier propose comme mesure d'énergie pour les "Edge Collapses" une **métrique quadratique** non destructive, qui conserve bien la géométrie globale. Cette priorité veut simplifier statistiquement la recherche de la prochaine contraction par approximations rapides, en agrégeant les *quadriques* des sommets contractés. Le papier ne propose cependant pas de technique de streaming de mesh, nous offrant avant tout un critère priorité supplémentaire dans notre pipeline.
+
+- Plus spécifiquement, le **mécanisme de "priorité"** du papier calcule l'erreur quadratique à un sommet $v$, $E(v) = v^T Q v$, où $Q = \sum K_p$ est la **quadrique**, une matrice $4 \times 4$ associée à $v$, avec $K_p$ sont les matrices des plans adjacents à $v$. Ainsi, il évalue une contraction de sommets $(v_1, v_2)$ par sa quadrique $Q_{1/2} = Q_1 + Q_2$. La priorité des contractions se trouve alors par le classement croissant des erreurs de contraction: $E = v_{opt}^T (Q_1 + Q_2) v_{opt}$.
+
+- Pareil à voir mais logiquement c'est du $O(n \log n)$.
+
+### Mesh Saliency Analysis via Local Curvature Entropy
+
+- Ce papier propose une mesure de **saillance** des sommets, *i.e* une recherche de zones d'intérêts, basée sur l'entropie de la courbure locale (entropie de Shannon). En effet, une zone saillante est à forte variation géométrique locale, càd à haute Entropie de SHannon. Cette méthode veut donc identifier les régions visuellement importantes d'un maillage comme **métrique de priorité** pour les *Edge Collapses*, en simplifiant agressivement les zones peu "saillantes" et en préservant le détail des zones saillantes. Le papier ne propose pas non plus de technique de streaming, mais offre un critère complémentaire à la métrique géométrique de QEM, directement intégrable dans notre pipeline.
 
 ## Création d'un modèle progressif au format obja
 
