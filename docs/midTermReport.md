@@ -21,7 +21,7 @@ header-includes:
   - \usepackage{float}
   - \usepackage{subfig}
 output: pdf_document
-toc: true
+toc: false
 numbersections: true
 fig_caption: true
 papersize: a4
@@ -132,7 +132,7 @@ En plus des séances en autonomie, nous essayons pleinement d'utiliser le systè
 
 Exemple des *Issues* sur la période de rédaction de ce document :
 
-![Distribution des Issues sur le repo Github](https://hedgedoc.inpt.fr/uploads/3bc2c469-d174-488d-b76d-197ae4d55cfa.png)
+![Distribution des Issues sur le repo Github](gitIssues.png){width=80%}
 
 # Conclusion mid-terms
 
