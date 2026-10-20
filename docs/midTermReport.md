@@ -53,7 +53,7 @@ Trois propositions d'implémentation supplémentaires, plus ou moins proches des
 
 ### Multiresolution Streaming Mesh with Shape Preserving and QoS-like Controlling
 
-- "Ce papier se concentre sur l'ajout des *progressive meshes* à la transmission Internet, avec des simplifications non destructives des modèles grâce à un système de "*QoS*" qui priorise et contrôle la simplification (donc le niveau de détail / LOD) du maillage selon le réseau. En clair, leur papier vise à proposer un ajustement du nombre de patches à envoyer selon le débit estimé du "client". On a notamment trouvé intéressant dans ce papier la variante "Half Edge Collapse" qui vient compléter l'*Edge Collapse* de Hoppe, qui retourne comme sommets de maillage un sous-ensemble de l'original. C'est cette dernière qui permet un meilleur contrôle topologique lors des contractions. Ce papier propose aussi un test supplémentaire de retournement de face pour vérifier si elle sera dégénérée (non-manifold), et donc à abadnonner, ou non.
+- Ce papier se concentre sur l'ajout des *progressive meshes* à la transmission Internet, avec des simplifications non destructives des modèles grâce à un système de "*QoS*" qui priorise et contrôle la simplification (donc le niveau de détail / LOD) du maillage selon le réseau. En clair, leur papier vise à proposer un ajustement du nombre de patches à envoyer selon le débit estimé du "client". On a notamment trouvé intéressant dans ce papier la variante "Half Edge Collapse" qui vient compléter l'*Edge Collapse* de Hoppe, qui retourne comme sommets de maillage un sous-ensemble de l'original. C'est cette dernière qui permet un meilleur contrôle topologique lors des contractions. Ce papier propose aussi un test supplémentaire de retournement de face pour vérifier si elle sera dégénérée (non-manifold), et donc à abadnonner, ou non.
 
 - Le **mécanisme de "priorité"** du papier se base sur le **poids** des arêtes, défini comme la différence (distance) des attributs scalaires $S$ (dont les vecteurs normaux) entre ses sommets. Pour les arêtes dont il est supérieur à un seuil $\varepsilon_i$, on les définit comme des arêtes essentielles non contractables, tout comme les arêtes "sharp" (bords, matériaux ou normales différents) et leurs corner vertices. Cette emphase sur le poids par différence des normales s'explique par le "plat" d'une arête faite de deux points aux normales proches. Une différence d'attributs plus faible signifie ainsi une zone plus lisse et donc prioritaire. Cette méthode va donc mettre dans une queue l'ordre de contraction des arêtes selon le plus faible poids.
 
@@ -104,7 +104,7 @@ Notre objectif est donc d'augmenter la portée d'un mesh 3D (OBJ) en le faisant 
 - `edge_collapse` : invariants (nb sommets - 1, pas de face non-manifold, indexation correcte) ; inversibilité `vsplit(edge_collapse(M)) == M` ; priorité renvoie toujours une arête.
 - `half_edge_collapse` : invariants (hérités de `edge_collapse`, position de $v_t$, nb face - 2 ou -1, flipping).
 - `LCE` : $0 \le LCE \le \log_2(n_{bins})$, invariance à l'échelle et à la densité (Voronoï).
-- `QEM` : $E(v_{opt}) \le E(v) \le 0$ (bel et bien optimal, semi-déf-positive).
+- `QEM` : $E(v_{opt}) \le E(v)$ et $ E(v_{opt})  \le 0$ (bel et bien optimal, semi-déf-positive).
 
 Ces tests porteront sur `bunny.obj`, `suzanne.obj` ou sur des maillages réalisés par certains membres de l'équipe sur Blender (une sorte de *stress* test).
 
