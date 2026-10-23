@@ -17,15 +17,15 @@ documentclass: article
 csl: format.csl
 header-includes:
   - \usepackage{fvextra}
-  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+  - '\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}'
   - \usepackage{float}
   - \usepackage{subfig}
-output: pdf_document
 toc: false
 numbersections: true
 fig_caption: true
 papersize: a4
 geometry: margin=1.1cm
+
 ---
 
 **Note**:
@@ -132,7 +132,7 @@ En plus des séances en autonomie, nous essayons pleinement d'utiliser le systè
 
 Exemple des *Issues* sur la période de rédaction de ce document :
 
-![Distribution des Issues sur le repo Github](gitIssues.png){width=80%}
+![Distribution des Issues sur le repo Github](https://hedgedoc.inpt.fr/uploads/bac8321d-dd4f-440f-82b4-17e6ff5a6541.png){width=80%}
 
 # Conclusion mid-terms
 
