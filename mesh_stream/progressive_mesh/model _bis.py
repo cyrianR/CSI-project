@@ -101,7 +101,7 @@ def edge_collapse(vertices: MutableSequence[np.ndarray], faces: MutableSequence[
             )
         )
 
-    # This updates the caller's list rather than rebinding a local name.
+    # update the caller's list.
     faces[:] = compacted_faces
 
     return [s_new, l_new, r_new, t_new, vs, vt]
