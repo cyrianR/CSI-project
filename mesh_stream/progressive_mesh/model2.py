@@ -221,7 +221,7 @@ def main():
 
     model = ProgressiveMesh()
     model.parse_file(args.input)
-    model.collapse(args.max_collapse, RandomPriority())
+    model.collapse(args.max_collapse, QuadricErrorPriority())
     model.write(args.output)
 
 
