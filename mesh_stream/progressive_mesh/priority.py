@@ -12,7 +12,7 @@ from mesh_stream import obja
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .model2 import MeshReader
+    from .model import MeshReader
 
 class Priority(ABC):
     def __init__(self):
@@ -296,6 +296,57 @@ class QuadricErrorPriority(Priority):
         return np.asarray(target, dtype=float), evaluate(target)
 
 
+    # def _preserves_local_orientation(self, pair: tuple[int, int],
+    #                                 target: np.ndarray,
+    #                                 vertices: Sequence[np.ndarray],
+    #                                 faces: Sequence[obja.Face]) -> bool:
+    #     """Reject a target that flips or collapses a surviving adjacent face."""
+    #     s, t = pair
+    #     target = np.asarray(target, dtype=float)
+
+    #     for face in faces:
+    #         ids = [int(v) for v in face]
+
+    #         # Faces containing both endpoints disappear during the collapse.
+    #         if s in ids and t in ids:
+    #             continue
+
+    #         # Faces with neither endpoint are geometrically unaffected.
+    #         if s not in ids and t not in ids:
+    #             continue
+
+    #         old_points = [np.asarray(vertices[v], dtype=float) for v in ids]
+    #         new_ids = [s if v == t else v for v in ids]
+    #         new_points = [
+    #             target if v == s else np.asarray(vertices[v], dtype=float)
+    #             for v in new_ids
+    #         ]
+
+    #         old_normal = np.cross(
+    #             old_points[1] - old_points[0],
+    #             old_points[2] - old_points[0],
+    #         )
+    #         new_normal = np.cross(
+    #             new_points[1] - new_points[0],
+    #             new_points[2] - new_points[0],
+    #         )
+
+    #         old_area2 = np.linalg.norm(old_normal)
+    #         new_area2 = np.linalg.norm(new_normal)
+
+    #         # A face with almost no original area is already unreliable.
+    #         # A surviving face with almost no new area has collapsed.
+    #         if old_area2 <= 1e-15 or new_area2 <= 1e-15:
+    #             return False
+
+    #         # A non-positive dot product means the new normal is perpendicular
+    #         # to or opposite the old normal. Reject both flattening and flipping.
+    #         if float(old_normal @ new_normal) <= 0.0:
+    #             return False
+
+    #     return True
+
+
     # 4. On place toutes les paires dans un tas classé par coût (= l'erreur), avec la paire au plus bas coût en haut
     def update_heap(self, pairs: list[tuple[int, int]]):
         ''' Update costs and rebuild min-heap for pairs in arg'''
@@ -304,6 +355,7 @@ class QuadricErrorPriority(Priority):
         assert self.mesh_reader is not None
 
         vertices = self.mesh_reader.vertices
+        # faces = self.mesh_reader.faces
 
         for pair in pairs:
             # On ignore les mauvaises paires
@@ -318,6 +370,9 @@ class QuadricErrorPriority(Priority):
 
             # un item du tas-min garde la paire-cible et son cout.
             target, cost = self.compute_contraction(pair, self.quadrics, vertices)
+            # if not self._preserves_local_orientation(pair, target, vertices,
+                                                    #  faces):
+                # continue
             # on remet le tas-min en place
             heapq.heappush(self.min_heap, (cost, next(self._tie_breaker), pair, target))
 
