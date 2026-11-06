@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import random
 
 from mesh_stream import obja
-from .model import MeshReader
+from .mesh_reader import MeshReader
 
 class Priority(ABC):
     def __init__(self):
@@ -26,7 +26,7 @@ class RandomPriority(Priority):
         self._check_reader()
         faces = self.mesh_reader.faces
         f = random.choice(faces)
-        return tuple(random.sample(f,2))
+        return tuple(random.sample(list(f),2))
 
 
 
