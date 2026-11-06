@@ -10,8 +10,7 @@ from collections.abc import MutableSequence, Sequence
 import numpy as np
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority
-
+from .priority import Priority, RandomPriority, QuadricErrorPriority
 
 def edge_collapse(vertices: MutableSequence[np.ndarray], faces: MutableSequence[obja.Face],
     s: int, t: int, target: np.ndarray) -> list:
@@ -129,14 +128,39 @@ class ProgressiveMesh(obja.Model):
             priority (Priority): A priority object defining the strategy to choose next edge to collapse.
         """
         priority.set_reader(MeshReader(self))
-        while len(self.faces) >= 2 and len(self.vsplits) < max_collapse:
-            s, t = priority.next()
-            vsplit = edge_collapse(self.vertices, self.faces, s, t)
+
+        for i in range(max_collapse):
+            try:
+                choice = priority.next()
+            except StopIteration:
+                break
+
+            if isinstance(priority, QuadricErrorPriority):
+                # QEM retourne la cible de contraction au cout popped
+                pair, target = choice
+                s, t = pair
+            else:
+                # RandomPriority's (s,t)
+                s, t = choice
+                pair = (min(s, t), max(s, t))
+                target = (self.vertices[s] + self.vertices[t]) / 2.0
+
+            # The current split record describes edge collapse only.
+            if not any(s in face and t in face for face in self.faces):
+                raise ValueError(f"Selected pair ({s}, {t}) is not an edge; "
+                    "the current split record cannot encode it."
+                )
+
+            vsplit = edge_collapse(self.vertices, self.faces, s, t, target)
             self.vsplits.insert(0, vsplit)
+
+            # maj QEM si le mesh a changé
+            if isinstance(priority, QuadricErrorPriority):
+                priority.contract_pair(pair, target)
 
     def _vsplit_to_obja(self, output_model: obja.Output, vsplit: list):
         # Add vt to mesh
-        output_model.add_vertex(vsplit[5])
+        output_model.add_vertex(vsplit[3], vsplit[5])
 
         # Place vs to its original position
         output_model.edit_vertex(vsplit[0], vsplit[4])
@@ -163,7 +187,7 @@ class ProgressiveMesh(obja.Model):
 
             # Write the transforms (vsplits)
             for vsplit in self.vsplits:
-                _vsplit_to_obja(output_model, vsplit)
+                self._vsplit_to_obja(output_model, vsplit)
 
 
 class MeshReader:
