@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import heapq
 import itertools
@@ -8,7 +9,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mesh_stream import obja
-from mesh_stream.progressive_mesh.model2 import MeshReader
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .model2 import MeshReader
 
 class Priority(ABC):
     def __init__(self):

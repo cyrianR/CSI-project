@@ -214,7 +214,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run the progressive meshes model on a 3D OBJ file.")
     parser.add_argument("input", help="Input OBJ file")
     parser.add_argument("output", help="Output OBJA file")
-    parser.add_argument("max_collapse", help="Maximum number of edge collapse steps")
+    parser.add_argument("max_collapse", type=int, help="Maximum number of edge collapse steps")
     args = parser.parse_args()
 
     np.seterr(invalid="raise")
