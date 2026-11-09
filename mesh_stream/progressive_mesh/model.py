@@ -11,7 +11,7 @@ from itertools import permutations
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority
+from .priority import Priority, RandomPriority, ChoosePriority
 from .mesh_reader import MeshReader
 
 
@@ -140,6 +140,45 @@ def fan_traversal(faces: list, center: int, start: int, stop: int, rotation: str
     return fi_list, f_list, endpoints
 
 
+def invalid_edges(faces: list):
+    """
+    Find invalid edges according to the link condition.
+
+    Args:
+        faces (list): Faces of the mesh.
+
+    Returns:
+        list(tuple): List of invalid edges.
+    """
+    vertex_neighbours = {}
+    edge_neighbours = {}
+
+    for f in faces:
+        
+        for v in (f.a, f.b, f.c):
+            vertex_neighbours.setdefault(v, set())
+        
+        vertex_neighbours[f.a].add(f.b)
+        vertex_neighbours[f.a].add(f.c)
+        vertex_neighbours[f.b].add(f.c)
+        vertex_neighbours[f.b].add(f.a)
+        vertex_neighbours[f.c].add(f.b)
+        vertex_neighbours[f.c].add(f.a)
+
+        for u, v, neighbour in ((f.a,f.b,f.c), (f.c,f.a,f.b), (f.b,f.c,f.a)):
+            edge = tuple(sorted((u,v)))
+            edge_neighbours.setdefault(edge, set()).add(neighbour)
+        
+    invalid = []
+
+    for (u, v), edge_neighbours in edge_neighbours.items():
+        common_neighbours = vertex_neighbours[u] & vertex_neighbours[v]
+        if common_neighbours != edge_neighbours:
+            invalid.append((u,v))
+    
+    return invalid
+        
+
 class ProgressiveMesh(obja.Model):
     """
     Progressive Meshes model implementation.
@@ -147,6 +186,8 @@ class ProgressiveMesh(obja.Model):
     Attributes:
         vsplits (list): Vertex split transforms in reconstruction order.
                         vsplits[0] corresponds to the last edge collapse applied to the progressive mesh.
+        compressed_vertices (list): The compressed vertices of the coarse mesh after collapse.
+        compressed_faces (list): The compressed faces of the coarse mesh after collapse.
     """
     def __init__(self):
         super().__init__()
@@ -164,7 +205,7 @@ class ProgressiveMesh(obja.Model):
                 return None
             if index == t:
                 return t_new
-            if index > t:
+            if t < index <= t_new:
                 return index - 1
             return index
 
@@ -189,8 +230,15 @@ class ProgressiveMesh(obja.Model):
         priority.set_reader(MeshReader(self))
 
         while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
-            s, t = priority.next() # TODO : il faut donner à la priorité la liste des edges candidates peut etre
-            print(f"S={s}, T={t}")
+            
+            edge = priority.next(invalid_edges(self.compressed_faces))
+            print(edge)
+
+            if edge is None:
+                break
+            else:
+                s, t = edge
+            
             vsplit = edge_collapse(self.compressed_vertices, self.compressed_faces, s, t)
 
             # Update previous vsplits
@@ -212,10 +260,8 @@ class ProgressiveMesh(obja.Model):
 
             # Write the compressed mesh (coarser mesh)
             for (vi, v) in enumerate(self.compressed_vertices):
-                print(f"{vi} : {v}")
                 output_model.add_vertex(vi, v)
             for (fi, f) in enumerate(self.compressed_faces):
-                print(f"{fi} : {f}")
                 output_model.add_face(fi, face=f)
 
             # Write the transforms (vsplits)
