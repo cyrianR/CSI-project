@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+
+from re import L
+from traceback import format_list
+
 import numpy as np
 import argparse
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority, QuadricErrorPriority
+from .priority import Priority, RandomPriority, ChoosePriority
 from .mesh_reader import MeshReader
 
 
@@ -46,14 +50,14 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int, target: np.ndarra
     vt = vertices[t]
 
     # Make vs the single vertex as midpoint of the edge
-    vertices[s] = np.asarray(target, dtype=vertices[s].dtype).copy()
+    vertices[s] = (vertices[s] + vertices[t]) / 2
 
     # Remove collapsed faces and save neighbour vertices r and l
     l, r = None, None
     faces_to_remove = []
     for f in faces:
         if s in list(f) and t in list(f):
-            k = list(f).index(s)
+            k = f.index(s)
             if f[(k + 1) % 3] == t: # if t is just after s in the ordered indexes of the face then the current face is (s,t,l)
                 l = f[(k + 2) % 3]
             else:                   # otherwise t is just before s in the ordered indexes of the face and the current face is (s,r,t)
@@ -87,7 +91,7 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int, target: np.ndarra
     return [s_new, l_new, r_new, t_new, vs, vt]
 
 
-def fan_traversal(faces: list, center: int, start: int, stop: int | None, rotation: str):
+def fan_traversal(faces: list, center: int, start: int, stop: int, rotation: str):
     """Fan traversal around given corner from start to stop endpoints.
     If fan is not completely continuous, traversal is only computed from start to the first cut.
 
@@ -119,22 +123,58 @@ def fan_traversal(faces: list, center: int, start: int, stop: int | None, rotati
     while not fan_end:
         found = False
         for (fi,f) in enumerate(faces):
-            if center in f and f[(list(f).index(center) + i) % 3] == endpoints[-1]:
-                endpoints.append(f[(list(f).index(center) + (i % 2) + 1) % 3])
+            if center in f and f[(f.index(center) + i) % 3] == endpoints[-1]:
+                endpoints.append(f[(f.index(center) + (i % 2) + 1) % 3])
                 fi_list.append(fi)
                 f_list.append(f)
                 found = True
                 break
         if not found:
             fan_end = True
-        if not fan_end:
-            reached_stop = stop is not None and endpoints[-1] == stop
-            reached_start = endpoints[-1] == start
-            if reached_stop or reached_start:
-                fan_end = True
+        if not fan_end and ((stop != None and endpoints[-1] == stop) or endpoints[-1] == start):
+            fan_end = True
 
     return fi_list, f_list, endpoints
 
+
+def invalid_edges(faces: list):
+    """
+    Find invalid edges according to the link condition.
+
+    Args:
+        faces (list): Faces of the mesh.
+
+    Returns:
+        list(tuple): List of invalid edges.
+    """
+    vertex_neighbours = {}
+    edge_neighbours = {}
+
+    for f in faces:
+        
+        for v in (f.a, f.b, f.c):
+            vertex_neighbours.setdefault(v, set())
+        
+        vertex_neighbours[f.a].add(f.b)
+        vertex_neighbours[f.a].add(f.c)
+        vertex_neighbours[f.b].add(f.c)
+        vertex_neighbours[f.b].add(f.a)
+        vertex_neighbours[f.c].add(f.b)
+        vertex_neighbours[f.c].add(f.a)
+
+        for u, v, neighbour in ((f.a,f.b,f.c), (f.c,f.a,f.b), (f.b,f.c,f.a)):
+            edge = tuple(sorted((u,v)))
+            edge_neighbours.setdefault(edge, set()).add(neighbour)
+        
+    invalid = []
+
+    for (u, v), edge_neighbours in edge_neighbours.items():
+        common_neighbours = vertex_neighbours[u] & vertex_neighbours[v]
+        if common_neighbours != edge_neighbours:
+            invalid.append((u,v))
+    
+    return invalid
+        
 
 class ProgressiveMesh(obja.Model):
     """
@@ -143,12 +183,33 @@ class ProgressiveMesh(obja.Model):
     Attributes:
         vsplits (list): Vertex split transforms in reconstruction order.
                         vsplits[0] corresponds to the last edge collapse applied to the progressive mesh.
+        compressed_vertices (list): The compressed vertices of the coarse mesh after collapse.
+        compressed_faces (list): The compressed faces of the coarse mesh after collapse.
     """
     def __init__(self):
         super().__init__()
         self.vsplits = []
         self.compressed_vertices = None
         self.compressed_faces = None
+
+    def _update_vsplits_indices(self, t: int, t_new: int):
+        """
+        Update indices in previously stored vertex splits after removing vertex t and appending it at index t_new.
+        """
+
+        def remap(index):
+            if index is None:
+                return None
+            if index == t:
+                return t_new
+            if t < index <= t_new:
+                return index - 1
+            return index
+
+        for vsplit in self.vsplits:
+            vsplit[0] = remap(vsplit[0])
+            vsplit[1] = remap(vsplit[1])
+            vsplit[2] = remap(vsplit[2])
 
     def _update_vsplits_indices(self, t: int, t_new: int):
         """
@@ -185,26 +246,16 @@ class ProgressiveMesh(obja.Model):
         priority.set_reader(MeshReader(self))
 
         while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
-            choice = priority.next()
-            if isinstance(priority, QuadricErrorPriority):
-                pair, target = choice
-                s, t = pair
+            
+            edge = priority.next(invalid_edges(self.compressed_faces))
+            print(edge)
+
+            if edge is None:
+                break
             else:
-                s, t = choice
-                target = (
-                    self.compressed_vertices[s] +
-                    self.compressed_vertices[t]
-                ) / 2.0
+                s, t = edge
             
-            print(f"S={s}, T={target}")
-            
-            vsplit = edge_collapse(
-                self.compressed_vertices,
-                self.compressed_faces,
-                s,
-                t,
-                target,
-            )
+            vsplit = edge_collapse(self.compressed_vertices, self.compressed_faces, s, t)
 
             # Update previous vsplits
             t_new = vsplit[3]
@@ -230,10 +281,8 @@ class ProgressiveMesh(obja.Model):
 
             # Write the compressed mesh (coarser mesh)
             for (vi, v) in enumerate(self.compressed_vertices):
-                print(f"{vi} : {v}")
                 output_model.add_vertex(vi, v)
             for (fi, f) in enumerate(self.compressed_faces):
-                print(f"{fi} : {f}")
                 output_model.add_face(fi, face=f)
 
             # Write the transforms (vsplits)
@@ -266,7 +315,7 @@ class ProgressiveMesh(obja.Model):
 
                 for fi, f in zip(fi_list, f_list):
                     new_face = f.clone()
-                    k = list(f).index(s)
+                    k = f.index(s) # index of s in face f
                     new_face[k] = t # here maybe t_new not needed from vsplit since we always use the last index 
                     output_model.edit_face(fi, new_face) # edit face in obja model
                     faces_buffer[fi] = new_face # edit face in buffer

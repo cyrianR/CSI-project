@@ -64,6 +64,10 @@ class Face:
             raise VertexError(self.b + 1, line)
         if self.c >= len(vertices):
             raise VertexError(self.c + 1, line)
+    
+    def index(self, value):
+        """Returns the index of a vertex value (a, b, or c)."""
+        return [self.a, self.b, self.c].index(value)
 
     def __str__(self):
         return "Face({}, {}, {})".format(self.a, self.b, self.c)
