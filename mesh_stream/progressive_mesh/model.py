@@ -232,7 +232,6 @@ class ProgressiveMesh(obja.Model):
         while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
             
             edge = priority.next(invalid_edges(self.compressed_faces))
-            print(edge)
 
             if edge is None:
                 break
