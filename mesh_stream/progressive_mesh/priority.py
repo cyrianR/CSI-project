@@ -11,6 +11,7 @@ import numpy as np
 from mesh_stream import obja
 from .mesh_reader import MeshReader
 
+
 class Priority(ABC):
     def __init__(self):
         self.mesh_reader: MeshReader | None = None
@@ -29,12 +30,10 @@ class Priority(ABC):
 
 class RandomPriority(Priority):
 
-    def next(self, invalid_edges):
+    def next(self, invalid_edges: list[tuple[int, int]]) -> tuple[int, int] | None:
         self._check_reader()
         assert self.mesh_reader is not None
         faces = self.mesh_reader.faces
-        if not faces:
-            raise StopIteration("No faces remain.")
         f = random.choice(faces)
         edge = tuple(sorted(random.sample(list(f),2)))
         while edge in invalid_edges:
@@ -108,17 +107,30 @@ class QuadricErrorPriority(Priority):
         # Etape 3-4
         self.update_heap(sorted(self._active_pairs))
 
-    def next(self) -> tuple: 
+    def next(self, invalid_edges: list[tuple[int, int]]) -> tuple[int, int] | None:
         self._check_reader()
+        assert self.mesh_reader is not None
 
-        # tq le tas n'est pas vide on pop le plus petit item
+        vertices = self.mesh_reader.vertices
+        faces = self.mesh_reader.faces
+        invalid = set(invalid_edges)
+
+        self.quadrics = self.compute_Q(vertices, faces)
+
+        pairs = self.select_valid_pairs(vertices, faces, self.distance_threshold)
+
+        pairs = sorted(pair for pair in pairs if pair not in invalid)
+        if not pairs:
+            return None
+
+        self.update_heap(pairs)
+
         while self.min_heap:
-            _, _, pair, target = heapq.heappop(self.min_heap)
-            if pair in self._active_pairs:
-                return pair, target.copy()
+            _, _, pair, _ = heapq.heappop(self.min_heap)
+            if pair not in invalid:
+                return pair
 
-        # An empty heap means no valid contraction remains.
-        raise StopIteration("No valid contraction pairs remain.")
+        return None
 
     # 1. Calcul matrices Q initiales pour chaque sommet. Q = somme des Kp  (voir section 5)
     def compute_Q(self, vertices: Sequence[np.ndarray], faces: Sequence[obja.Face]) -> list[np.ndarray]:
@@ -211,9 +223,7 @@ class QuadricErrorPriority(Priority):
             boundary_plane = np.array([*boundary_normal, d],dtype=float)
 
             # On ajoute la pondération pour que ca soit plus couter de casser cette boundary
-            boundary_quadric = (
-                self.BOUNDARY_WEIGHT
-                * np.outer(boundary_plane, boundary_plane)
+            boundary_quadric = (self.BOUNDARY_WEIGHT * np.outer(boundary_plane, boundary_plane)
             )
             # on attribue l'erreur quadrique du boundary plane aux deux bouts
             quadrics[u] += boundary_quadric
@@ -311,57 +321,6 @@ class QuadricErrorPriority(Priority):
         return np.asarray(target, dtype=float), evaluate(target)
 
 
-    # def _preserves_local_orientation(self, pair: tuple[int, int],
-    #                                 target: np.ndarray,
-    #                                 vertices: Sequence[np.ndarray],
-    #                                 faces: Sequence[obja.Face]) -> bool:
-    #     """Reject a target that flips or collapses a surviving adjacent face."""
-    #     s, t = pair
-    #     target = np.asarray(target, dtype=float)
-
-    #     for face in faces:
-    #         ids = [int(v) for v in face]
-
-    #         # Faces containing both endpoints disappear during the collapse.
-    #         if s in ids and t in ids:
-    #             continue
-
-    #         # Faces with neither endpoint are geometrically unaffected.
-    #         if s not in ids and t not in ids:
-    #             continue
-
-    #         old_points = [np.asarray(vertices[v], dtype=float) for v in ids]
-    #         new_ids = [s if v == t else v for v in ids]
-    #         new_points = [
-    #             target if v == s else np.asarray(vertices[v], dtype=float)
-    #             for v in new_ids
-    #         ]
-
-    #         old_normal = np.cross(
-    #             old_points[1] - old_points[0],
-    #             old_points[2] - old_points[0],
-    #         )
-    #         new_normal = np.cross(
-    #             new_points[1] - new_points[0],
-    #             new_points[2] - new_points[0],
-    #         )
-
-    #         old_area2 = np.linalg.norm(old_normal)
-    #         new_area2 = np.linalg.norm(new_normal)
-
-    #         # A face with almost no original area is already unreliable.
-    #         # A surviving face with almost no new area has collapsed.
-    #         if old_area2 <= 1e-15 or new_area2 <= 1e-15:
-    #             return False
-
-    #         # A non-positive dot product means the new normal is perpendicular
-    #         # to or opposite the old normal. Reject both flattening and flipping.
-    #         if float(old_normal @ new_normal) <= 0.0:
-    #             return False
-
-    #     return True
-
-
     # 4. On place toutes les paires dans un tas classé par coût (= l'erreur), avec la paire au plus bas coût en haut
     def update_heap(self, pairs: list[tuple[int, int]]):
         ''' Update costs and rebuild min-heap for pairs in arg'''
@@ -390,44 +349,3 @@ class QuadricErrorPriority(Priority):
                 # continue
             # on remet le tas-min en place
             heapq.heappush(self.min_heap, (cost, next(self._tie_breaker), pair, target))
-
-    # 5. Update QEM après fusion de la paire au plus petit coût
-    def contract_pair(self, pair: tuple[int, int], target: np.ndarray) -> tuple[int, int]:
-        s, t = pair
-
-        # canonical pairs: s gardé doit être inférieur à t retiré.
-        if s > t:
-            raise ValueError("QEM pairs must be canonical (survivor < removed).")
-        if not (0 <= s < t < len(self.quadrics)):
-            raise IndexError(f"Invalid contraction pair: {pair}")
-
-        # Summed QE sur le nv s est la somme des quadrics des deux pts (edgepts)
-        self.quadrics[s] = self.quadrics[s] + self.quadrics[t]
-        self.quadrics.pop(t)
-
-        # maj les occurences de t pour pointer vers s
-        def remap(vertex_id: int) -> int:
-            mapped = s if vertex_id == t else vertex_id
-
-            # les index au-dessus de t ont été shift down de 1
-            return mapped - 1 if mapped > t else mapped
-
-        # rediriger anciennes paires, retirer les paires malformées et doublons
-        new_pairs: set[tuple[int, int]] = set()
-        for u, v in self._active_pairs:
-            u2 = remap(u)
-            v2 = remap(v)
-
-            if u2 == v2:
-                # on skip les paires devenues (s, s)
-                continue
-        
-            new_pairs.add((min(u2, v2), max(u2, v2)))
-
-        self._active_pairs = new_pairs
-        self.valid_pairs = new_pairs
-
-        # on recalcule tous les couts pour maj le tas-min
-        self.update_heap(sorted(new_pairs))
-
-        return s, t

@@ -4,15 +4,18 @@ from re import L
 from traceback import format_list
 
 import numpy as np
+import sys
 import argparse
+import random
+from itertools import permutations
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority, ChoosePriority
+from .priority import Priority, RandomPriority, ChoosePriority, QuadricErrorPriority
 from .mesh_reader import MeshReader
 
 
-def edge_collapse(vertices: list, faces: list, s: int, t: int, target: np.ndarray):
+def edge_collapse(vertices: list, faces: list, s: int, t: int):
     """
     Collapse an edge of the mesh and save the vertex split information. 
 
@@ -57,7 +60,7 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int, target: np.ndarra
     faces_to_remove = []
     for f in faces:
         if s in list(f) and t in list(f):
-            k = f.index(s)
+            k = list(f).index(s)
             if f[(k + 1) % 3] == t: # if t is just after s in the ordered indexes of the face then the current face is (s,t,l)
                 l = f[(k + 2) % 3]
             else:                   # otherwise t is just before s in the ordered indexes of the face and the current face is (s,r,t)
@@ -91,7 +94,7 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int, target: np.ndarra
     return [s_new, l_new, r_new, t_new, vs, vt]
 
 
-def fan_traversal(faces: list, center: int, start: int, stop: int, rotation: str):
+def fan_traversal(faces: list, center: int, start: int, stop: int | None, rotation: str):
     """Fan traversal around given corner from start to stop endpoints.
     If fan is not completely continuous, traversal is only computed from start to the first cut.
 
@@ -211,25 +214,6 @@ class ProgressiveMesh(obja.Model):
             vsplit[1] = remap(vsplit[1])
             vsplit[2] = remap(vsplit[2])
 
-    def _update_vsplits_indices(self, t: int, t_new: int):
-        """
-        Update indices in previously stored vertex splits after removing vertex t and appending it at index t_new.
-        """
-
-        def remap(index):
-            if index is None:
-                return None
-            if index == t:
-                return t_new
-            if index > t:
-                return index - 1
-            return index
-
-        for vsplit in self.vsplits:
-            vsplit[0] = remap(vsplit[0])
-            vsplit[1] = remap(vsplit[1])
-            vsplit[2] = remap(vsplit[2])
-    
     def collapse(self, max_collapse: int, priority: Priority):
         """
         Collapse the mesh with a given maximum of iterations.
@@ -262,8 +246,6 @@ class ProgressiveMesh(obja.Model):
             self._update_vsplits_indices(t, t_new) 
 
             self.vsplits.insert(0, vsplit)
-            if isinstance(priority, QuadricErrorPriority):
-                priority.contract_pair((s, t), target)
 
 
     def write(self, path):
@@ -273,9 +255,9 @@ class ProgressiveMesh(obja.Model):
         Args:
             path (str): Path to OBJA output file.
         """
-        assert self.compressed_vertices is not None
-        assert self.compressed_faces is not None
-
+        if self.compressed_vertices is None or self.compressed_faces is None:
+            raise RuntimeError("collapse() must be called before write().")
+        
         with open(path, "w") as output:
             output_model = obja.Output(output, random_color=True)
 
@@ -315,7 +297,7 @@ class ProgressiveMesh(obja.Model):
 
                 for fi, f in zip(fi_list, f_list):
                     new_face = f.clone()
-                    k = f.index(s) # index of s in face f
+                    k = list(f).index(s) # index of s in face f
                     new_face[k] = t # here maybe t_new not needed from vsplit since we always use the last index 
                     output_model.edit_face(fi, new_face) # edit face in obja model
                     faces_buffer[fi] = new_face # edit face in buffer
@@ -343,7 +325,7 @@ def main():
 
     model = ProgressiveMesh()
     model.parse_file(args.input)
-    model.collapse(args.max_collapse, RandomPriority())
+    model.collapse(args.max_collapse, QuadricErrorPriority())
     model.write(args.output)
 
 
