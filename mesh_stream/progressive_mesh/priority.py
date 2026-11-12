@@ -59,7 +59,7 @@ class EnergyPriority(Priority):
     The energy function takes into account the distance from the original mesh,
     the representation of the mesh, and the spring energy of the edges. The edge with the minimum energy is selected for collapse."""
     
-    def __init__(self, K: float = 1.0, crep: float = 1.0, nb_iter: int = 100):
+    def __init__(self, K: float = 1.0):
         """initialise energy priority
 
         Args:
@@ -69,8 +69,6 @@ class EnergyPriority(Priority):
         """
         super().__init__()
         self.K = K # spring constant
-        self.crep = crep # representation constant
-        self.nb_iter = nb_iter # number of iterations for optimization
         
     def set_reader(self, mesh_reader: MeshReader):
             super().set_reader(mesh_reader)
@@ -87,21 +85,29 @@ class EnergyPriority(Priority):
             float: the total energy of the mesh
         """
         # data of the mesh
-        arretes = { (min(f.a, f.b), max(f.a, f.b)) for f in faces} | { (min(f.b, f.c), max(f.b, f.c)) for f in faces} | { (min(f.c, f.a), max(f.c, f.a)) for f in faces} # compute edges of the mesh
-        d = cKDTree(V).query(self.X)[0] # d[i] = distance from X[i] the original mesh to its nearest vertex
+        # compute edges of the mesh all with min value first so no doubles
+        arretes = { (min(f.a, f.b), max(f.a, f.b)) for f in faces} | { (min(f.b, f.c), max(f.b, f.c)) for f in faces} | { (min(f.c, f.a), max(f.c, f.a)) for f in faces}
+        # d[i] = distance from X[i] the original mesh to its nearest vertex
+        d = cKDTree(V).query(self.X)[0]
         # distance energy
         edist = np.sum(d ** 2)
-        # representation energy
-        erep = self.crep * len(V)
         # spring energy
         espring = self.K * sum(np.linalg.norm(V[a] - V[b]) ** 2 for a, b in arretes)
         # total energy
-        energy = edist + erep + espring
+        energy = edist + espring
         
         return energy
 
     @staticmethod
     def _simulate_edge_collapse(vertices, faces, edge):
+        """ simulate the collapse of an edge and return the new vertices and faces, allows to calculate the energy of the new mesh without modifying the original mesh
+        Args:
+            vertices (list): list of vertices
+            faces (list): list of faces
+            edge (tuple): edge to collapse
+        Returns:
+            tuple: new vertices and faces after the collapse
+        """
         vertices = copy.deepcopy(vertices)
         faces = copy.deepcopy(faces)
         s, t = edge
@@ -132,36 +138,11 @@ class EnergyPriority(Priority):
         V = self.mesh_reader.vertices
         
         # compute the energy of candidate edges and select the minimum
-        candidate_edges = {
-            tuple(sorted(edge))
-            for f in faces
-            for edge in ((f.a, f.b), (f.b, f.c), (f.c, f.a))
-        }
+        candidate_edges = { (min(f.a, f.b), max(f.a, f.b)) for f in faces} | { (min(f.b, f.c), max(f.b, f.c)) for f in faces} | { (min(f.c, f.a), max(f.c, f.a)) for f in faces}
+        # remove invalid edges from candidate edges
         candidate_edges = list(candidate_edges - set(invalid_edges))
+        
         if not candidate_edges:
             return None
 
-        min_energy = float('inf')
-        best_edge = None
-        ite = 0
-        while ite < self.nb_iter:
-            edge = random.choice(candidate_edges)
-            # compute the energy of the edge collapse
-            V_new, faces_new = self._simulate_edge_collapse(V, faces, edge)
-            energy = self.energy(V_new, faces_new)
-            if energy < min_energy:
-                min_energy = energy
-                best_edge = edge
-            ite += 1
-        
-        
-        return best_edge
-    
-    
-
-        ### self.arretes = [] # list of edges in the mesh # ATTENTION : this is not updated when the mesh is modified, so it may be wrong after some collapses
-        ### for f in self.mesh_reader.faces:
-        ###     for u, v in ((f.a, f.b), (f.b, f.c), (f.c, f.a)):
-        ###         arete = (min(u, v), max(u, v))
-        ###         if arete not in self.arretes:
-        ###             self.arretes.append(arete)
+        return min(candidate_edges, key=lambda e: self.energy(*self._simulate_edge_collapse(V, faces, e)))
