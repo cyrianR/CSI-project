@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import copy
 import random
 
 from mesh_stream import obja
@@ -98,8 +99,30 @@ class EnergyPriority(Priority):
         energy = edist + erep + espring
         
         return energy
+
+    @staticmethod
+    def _simulate_edge_collapse(vertices, faces, edge):
+        vertices = copy.deepcopy(vertices)
+        faces = copy.deepcopy(faces)
+        s, t = edge
+
+        vertices[s] = (vertices[s] + vertices[t]) / 2
+        faces = [f for f in faces if not (s in f and t in f)]
+
+        for f in faces:
+            for i in range(3):
+                if f[i] == t:
+                    f[i] = s
+
+        vertices.pop(t)
+        for f in faces:
+            for i in range(3):
+                if f[i] > t:
+                    f[i] -= 1
+
+        return vertices, faces
     
-    def next(self):
+    def next(self, invalid_edges):
         """ select the next edge to collapse based on the energy function
         Returns:
             tuple: the edge to collapse
@@ -108,16 +131,23 @@ class EnergyPriority(Priority):
         faces = self.mesh_reader.faces
         V = self.mesh_reader.vertices
         
-        # compute the energy of each edge and select the one with the minimum energy
+        # compute the energy of candidate edges and select the minimum
+        candidate_edges = {
+            tuple(sorted(edge))
+            for f in faces
+            for edge in ((f.a, f.b), (f.b, f.c), (f.c, f.a))
+        }
+        candidate_edges = list(candidate_edges - set(invalid_edges))
+        if not candidate_edges:
+            return None
+
         min_energy = float('inf')
         best_edge = None
         ite = 0
         while ite < self.nb_iter:
-            f = random.choice(faces)
-            edge = tuple(random.sample(f,2))
-            
+            edge = random.choice(candidate_edges)
             # compute the energy of the edge collapse
-            V_new, faces_new = self.simulate_edge_collapse(V, faces, edge)
+            V_new, faces_new = self._simulate_edge_collapse(V, faces, edge)
             energy = self.energy(V_new, faces_new)
             if energy < min_energy:
                 min_energy = energy
