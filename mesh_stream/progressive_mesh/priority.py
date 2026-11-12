@@ -7,15 +7,8 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 from mesh_stream import obja
-
 from .mesh_reader import MeshReader
-
-
-import igl
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import dijkstra
 
 
 class Priority(ABC):
@@ -32,7 +25,6 @@ class Priority(ABC):
     @abstractmethod
     def next(self, invalid_edges) -> tuple | None: 
         return ()
-
 
 
 class RandomPriority(Priority):
@@ -53,6 +45,7 @@ class RandomPriority(Priority):
             return None
 
         return random.choice(tuple(valid_edges))
+
 
 class ChoosePriority(Priority):
 
