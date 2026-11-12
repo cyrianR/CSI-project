@@ -355,3 +355,4 @@ class QuadricErrorPriority(Priority):
                 # continue
             # on remet le tas-min en place
             heapq.heappush(self.min_heap, (cost, next(self._tie_breaker), pair, target))
+
