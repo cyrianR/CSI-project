@@ -11,7 +11,7 @@ from itertools import permutations
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority, ChoosePriority, SaliencyPriority, QuadricErrorPriority
+from .priority import Priority, RandomPriority, ChoosePriority, SaliencyPriority, QuadricErrorPriority, EnergyPriority
 from .mesh_reader import MeshReader
 
 
