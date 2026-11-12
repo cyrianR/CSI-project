@@ -9,7 +9,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mesh_stream import obja
+
 from .mesh_reader import MeshReader
+
+
+import igl
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import dijkstra
 
 
 class Priority(ABC):
@@ -28,18 +34,25 @@ class Priority(ABC):
         return ()
 
 
+
 class RandomPriority(Priority):
 
     def next(self, invalid_edges: list[tuple[int, int]]) -> tuple[int, int] | None:
         self._check_reader()
         assert self.mesh_reader is not None
         faces = self.mesh_reader.faces
-        f = random.choice(faces)
-        edge = tuple(sorted(random.sample(list(f),2)))
-        while edge in invalid_edges:
-            edge = tuple(sorted(random.sample(list(f),2)))
-        return edge
 
+        edges = set()
+        for f in faces:
+            for u, v in ((f.a, f.b), (f.c, f.a), (f.b, f.c)):
+                edges.add(tuple(sorted((u, v))))
+
+        valid_edges = edges - set(invalid_edges)
+
+        if not valid_edges:
+            return None
+
+        return random.choice(tuple(valid_edges))
 
 class ChoosePriority(Priority):
 
