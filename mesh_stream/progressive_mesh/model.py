@@ -11,7 +11,7 @@ from itertools import permutations
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority, ChoosePriority, EnergyPriority
+from .priority import Priority, RandomPriority, ChoosePriority, SaliencyPriority, QuadricErrorPriority, EnergyPriority
 from .mesh_reader import MeshReader
 
 
@@ -60,7 +60,7 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int):
     faces_to_remove = []
     for f in faces:
         if s in list(f) and t in list(f):
-            k = f.index(s)
+            k = list(f).index(s)
             if f[(k + 1) % 3] == t: # if t is just after s in the ordered indexes of the face then the current face is (s,t,l)
                 l = f[(k + 2) % 3]
             else:                   # otherwise t is just before s in the ordered indexes of the face and the current face is (s,r,t)
@@ -94,7 +94,7 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int):
     return [s_new, l_new, r_new, t_new, vs, vt]
 
 
-def fan_traversal(faces: list, center: int, start: int, stop: int, rotation: str):
+def fan_traversal(faces: list, center: int, start: int, stop: int | None, rotation: str):
     """Fan traversal around given corner from start to stop endpoints.
     If fan is not completely continuous, traversal is only computed from start to the first cut.
 
@@ -232,7 +232,6 @@ class ProgressiveMesh(obja.Model):
         while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
             
             edge = priority.next(invalid_edges(self.compressed_faces))
-            print(edge)
 
             if edge is None:
                 break
@@ -255,6 +254,9 @@ class ProgressiveMesh(obja.Model):
         Args:
             path (str): Path to OBJA output file.
         """
+        if self.compressed_vertices is None or self.compressed_faces is None:
+            raise RuntimeError("collapse() must be called before write().")
+        
         with open(path, "w") as output:
             output_model = obja.Output(output, random_color=True)
 
@@ -294,7 +296,7 @@ class ProgressiveMesh(obja.Model):
 
                 for fi, f in zip(fi_list, f_list):
                     new_face = f.clone()
-                    k = f.index(s) # index of s in face f
+                    k = list(f).index(s) # index of s in face f
                     new_face[k] = t # here maybe t_new not needed from vsplit since we always use the last index 
                     output_model.edit_face(fi, new_face) # edit face in obja model
                     faces_buffer[fi] = new_face # edit face in buffer
