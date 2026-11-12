@@ -96,30 +96,30 @@ class ChoosePriority(Priority):
 
 
 ###################"######## Priorité basé  Mesh Saliency 4eme papier ###########################################
-# On mesure l'importance visuelle
-# score de saillance élevée quand une zone est variée et complexes (il y a bcp d'info)
-# score de saillancé élevée ie entropie haute => forte priorité
-
-# Section 3 : l'Algo
-#   1. Calcul de la courbure locale pour chaque sommet + son voisinage de rayon r
-#   2. les "bins" 
-#   3. Pondération par les aires avec les cellules de Voronoï (section 3.2) 
-#   4. Calcul de "l'entropie de la courbure locale" (LCE) (section 3.1) : + le score est élevé, + la zone est impt (forte saillance)
-#   5. Approche multi-echelle : On fait varier le rayon (rmax = 0.08 √AM)
-
 class SaliencyPriority(Priority):
     """
-    blabla
+    Stratégie de simplification de maillage basée sur la saillance géométrique
+    des sommets (Local Curvature Entropy: LCE).
+    Le but est de mesurer l'importance visuelle
+    On a un score de saillance élevée lq une zone est variée et complexes (il y a bcp d'info)
+    score de saillancé élevée ie entropie haute => forte priorité
+
+    Section 3 : l'Algo
+       1. Calcul de la courbure locale pour chaque sommet + son voisinage de rayon r
+       2. les "bins" 
+       3. Pondération par les aires avec les cellules de Voronoï (section 3.2) 
+       4. Calcul de "l'entropie de la courbure locale" (LCE) (section 3.1) : + le score est élevé, + la zone est impt (forte saillance)
+       5. Approche multi-echelle : On fait varier le rayon (rmax = 0.08 √AM)
     """
     def __init__(self):
         super().__init__()
         
 
+    def next(self, invalid_edges) -> tuple | None:
         # 1. Calculer la saillance (LCE) pour chaque sommet (Rayon max rmax = 0.08 * sqrt(Aire), 
         #    multi-échelle, discrétisation en bins, pondération Voronoï, entropie de Shannon).
         # 2. Utiliser ces scores de saillance pour une file de priorité (heap).
-        # 3. Retourner la prochaine arête / paire à simplifier sous forme de tuple
-    def next(self, invalid_edges) -> tuple | None:
+        # 3. Retourner la prochaine arête paire à simplifier sous forme de tuple
         self._check_reader()
         assert self.mesh_reader is not None
 
@@ -144,7 +144,7 @@ class SaliencyPriority(Priority):
             
         return None
 
-    ##########
+   
     def vertex_areas(self, vertices: Sequence[np.ndarray],
                      faces: Sequence[obja.Face]) -> np.ndarray:
         areas = np.zeros(len(vertices), dtype=np.float64)
@@ -171,14 +171,14 @@ class SaliencyPriority(Priority):
             
     #Calcul de la courbure locale pour chaque sommet (Section 3.1)
     def curvature(self, vertices: Sequence[np.ndarray], faces: Sequence[obja.Face]) -> np.ndarray:
-        # utilise la bibliotheque libigl
         V = np.array(vertices, dtype=np.float64)
         F = np.array([(f.a, f.b, f.c) for f in faces],dtype=np.int32)
         _, _, k1, k2, _ = igl.principal_curvature(V, F)
         courb= (k1+k2)/2
-        return np.abs(courb) # abs ou pas ?
+        return np.abs(courb) 
 
-    # faire un graph pour la fonction lce
+
+    # Graph pour la lce
     def graphe(self, V: np.ndarray, F: np.ndarray):
         n_vertices = len(V)
         edges = set()
@@ -200,21 +200,15 @@ class SaliencyPriority(Priority):
     
     
     # Entropie de la courbure locale (LCE) dans un voisinage de rayon r
-   #def lce(self, vertex_idx: int, radius: float, vertices: Sequence[np.ndarray], faces: Sequence[obja.Face]) -> float:
     def lce( self,vertex_idx: int,radius: float,graph: csr_matrix,curvatures: np.ndarray,areas: np.ndarray) -> float:
         """
-        - Discrétisation en bins (256 bins) (Section 3.1 & 4)
-        - Pondération par les cellules de Voronoï / aires (Section 3.2)
-        - Calcul de l'entropie de Shannon H(vi) = -sum(p * log2(p)) (Section 3.1)
+        Discrétisation en bins (256 bins) (Section 3.1 & 4)
+        Pondération par les cellules de Voronoï / aires (Section 3.2)
+        Calcul de l'entropie de Shannon H(vi) = -sum(p * log2(p)) (Section 3.1)
         """
-      # n = len(vertices)
-       #V = np.array(vertices, dtype=np.float64)
-      # F = np.array(faces, dtype=np.int32)
-
-       #courb =  curvature(vertices, faces)
         distances = dijkstra(csgraph=graph, directed=False, indices=vertex_idx)
 
-        # Récup les voisins dans le rayon `radius`
+        # Récup les voisins dans le rayon 
         vois = np.where(distances <= radius)[0]
         if len(vois) <= 1:
             return 0.0
@@ -239,7 +233,6 @@ class SaliencyPriority(Priority):
 
         return float(entropy)
         
-
 
     # Approche multi-échelle : rayon max rmax = 0.08 * sqrt(AM) et combinaison sur 5 niveaux (Section 3.3 & 4)
     def saliency(self, vertices: Sequence[np.ndarray], faces: Sequence[obja.Face], total_area: float) -> np.ndarray:
