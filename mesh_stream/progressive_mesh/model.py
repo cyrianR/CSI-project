@@ -11,7 +11,7 @@ from itertools import permutations
 import copy
 
 from mesh_stream import obja
-from .priority import Priority, RandomPriority, ChoosePriority
+from .priority import Priority, RandomPriority, WeightPriority
 from .mesh_reader import MeshReader
 
 
@@ -322,7 +322,7 @@ def main():
 
     model = ProgressiveMesh()
     model.parse_file(args.input)
-    model.collapse(args.max_collapse, RandomPriority())
+    model.collapse(args.max_collapse, WeightPriority())
     model.write(args.output)
 
 
