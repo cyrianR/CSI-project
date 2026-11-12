@@ -1,2 +1,6 @@
 legacy-cgi==2.6.4
 numpy==2.5.3
+scipy==1.18.1
+libigl==2.6.3
+tqdm==4.70.1
+

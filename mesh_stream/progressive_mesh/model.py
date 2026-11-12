@@ -1,14 +1,9 @@
 #!/usr/bin/env python
 
-from re import L
-from traceback import format_list
-
 import numpy as np
-import sys
 import argparse
-import random
-from itertools import permutations
 import copy
+from tqdm import tqdm
 
 from mesh_stream import obja
 from .priority import Priority, RandomPriority, ChoosePriority, SaliencyPriority, QuadricErrorPriority, EnergyPriority, WeightPriority
@@ -136,7 +131,8 @@ def edge_collapse(vertices: list, faces: list, s: int, t: int):
 
 
 def fan_traversal(faces: list, center: int, start: int, stop: int | None, rotation: str):
-    """Fan traversal around given corner from start to stop endpoints.
+    """
+    Fan traversal around given corner from start to stop endpoints.
     If fan is not completely continuous, traversal is only computed from start to the first cut.
 
     Args:
@@ -271,22 +267,28 @@ class ProgressiveMesh(obja.Model):
 
         priority.set_reader(MeshReader(self))
 
-        while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
-            
-            edge = priority.next(invalid_edges(self.compressed_faces))
+        with tqdm(total=max_collapse, desc="Collapsing mesh", unit="collapse") as pbar:
+            while len(self.compressed_faces) > 0 and len(self.vsplits) < max_collapse:
+                
+                # Choose next ege to collapse with priority
+                edge = priority.next(invalid_edges(self.compressed_faces))
 
-            if edge is None:
-                break
-            else:
-                s, t = edge
-            
-            vsplit = edge_collapse(self.compressed_vertices, self.compressed_faces, s, t)
+                if edge is None:
+                    break
+                else:
+                    s, t = edge
+                
+                # Edge collapse
+                vsplit = edge_collapse(self.compressed_vertices, self.compressed_faces, s, t)
 
-            # Update previous vsplits
-            t_new = vsplit[3]
-            self._update_vsplits_indices(t, t_new) 
+                # Update previous vsplits
+                t_new = vsplit[3]
+                self._update_vsplits_indices(t, t_new) 
 
-            self.vsplits.insert(0, vsplit)
+                # Add split
+                self.vsplits.insert(0, vsplit)
+
+                pbar.update(1)
 
 
     def write(self, path):
@@ -374,7 +376,7 @@ def main():
 
     model = ProgressiveMesh()
     model.parse_file(args.input)
-    model.collapse(args.max_collapse, WeightPriority())
+    model.collapse(args.max_collapse, RandomPriority())
     model.write(args.output)
 
 

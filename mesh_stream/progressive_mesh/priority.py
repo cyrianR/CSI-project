@@ -5,30 +5,15 @@ import heapq
 import itertools
 import random
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
-
-import numpy as np
-from mesh_stream import obja
-from .mesh_reader import MeshReader
-
-from abc import ABC, abstractmethod
-import random
-from typing import TYPE_CHECKING
-
-from mesh_stream import obja
-
 from collections import defaultdict
-
 import numpy as np
-
-
-
-
 from scipy.spatial import cKDTree
-
 import igl
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
+
+from mesh_stream import obja
+from .mesh_reader import MeshReader
 
 
 class Priority(ABC):
@@ -47,7 +32,7 @@ class Priority(ABC):
         return ()
 
 
-
+########################### Priorité triviale basée sur Random (pour tests) ##############################
 class RandomPriority(Priority):
 
     def next(self, invalid_edges):
@@ -66,6 +51,8 @@ class RandomPriority(Priority):
 
         return random.choice(tuple(valid_edges))
 
+
+########################### Priorité triviale de choix explicites (pour tests) ##############################
 class ChoosePriority(Priority):
 
     def __init__(self, edges):
@@ -81,7 +68,7 @@ class ChoosePriority(Priority):
             return tuple(self.edges[self.iteration - 1])
 
 
-###################"######## Priorité basé sur QEM (Quadric Error Metric) du 3eme papier ##############################
+########################### Priorité basé Quadric Error Metric (3eme papier) ##############################
 # Section 4.1 : Algorithme
 # On associe une matrice symétrique 4*4 Q à chaque sommet et l'erreur au sommet v : v^T Q v
 # Pour une contraction : Q = Q1 + Q2 et l'erreur v^T (Q1+Q2) v
@@ -348,7 +335,7 @@ class QuadricErrorPriority(Priority):
 
     # 4. On place toutes les paires dans un tas classé par coût (= l'erreur), avec la paire au plus bas coût en haut
     def update_heap(self, pairs: list[tuple[int, int]]):
-        ''' Update costs and rebuild min-heap for pairs in arg'''
+        """Update costs and rebuild min-heap for pairs in arg"""
 
         self.min_heap = []
         assert self.mesh_reader is not None
@@ -369,14 +356,12 @@ class QuadricErrorPriority(Priority):
 
             # un item du tas-min garde la paire-cible et son cout.
             target, cost = self.compute_contraction(pair, self.quadrics, vertices)
-            # if not self._preserves_local_orientation(pair, target, vertices,
-                                                    #  faces):
-                # continue
+
             # on remet le tas-min en place
             heapq.heappush(self.min_heap, (cost, next(self._tie_breaker), pair, target))
 
 
-###################"######## Priorité basé  Mesh Saliency 4eme papier ###########################################
+########################### Priorité basé Mesh Saliency (4eme papier) ###########################################
 class SaliencyPriority(Priority):
     """
     Stratégie de simplification de maillage basée sur la saillance géométrique
@@ -394,7 +379,6 @@ class SaliencyPriority(Priority):
     """
     def __init__(self):
         super().__init__()
-        
 
     def next(self, invalid_edges) -> tuple | None:
         # 1. Calculer la saillance (LCE) pour chaque sommet (Rayon max rmax = 0.08 * sqrt(Aire), 
@@ -550,7 +534,7 @@ class SaliencyPriority(Priority):
             heapq.heappush(self.min_heap, (prio, (u, v)))
             
    
-
+########################### Priorité basé Energy (1er papier, Progressive Mesh) ##############################
 class EnergyPriority(Priority):
     """ A priority that selects the next edge to collapse based on an energy function.
     The energy function takes into account the distance from the original mesh,
@@ -646,6 +630,7 @@ class EnergyPriority(Priority):
 
 
 
+########################### Priorité basée Shape Preserving et Weight (2eme papier) ##############################
 class WeightPriority(Priority):
     """
     Plus courte arête d'abord. Renvoie (s, t) : s gardé, t supprimé,
@@ -668,8 +653,6 @@ class WeightPriority(Priority):
     def edge_weight(vertices, a, b):
         return float(np.linalg.norm(np.asarray(vertices[a], dtype=float)
                                     - np.asarray(vertices[b], dtype=float)))
-
-
 
     @staticmethod
     def _normal(vertices, f):
@@ -702,12 +685,9 @@ class WeightPriority(Priority):
         return max(np.arccos(np.clip(np.dot(a, b), -1, 1))
                    for i, a in enumerate(ns) for b in ns[i + 1:])
 
-
-
     # return : True si on peut collapse l'edge (s,t)
     def _collapse_ok(self, vertices, adj, s, t):
         # on ne peut pas collapse un sommet appartement à une arrête d'un base edge car sinon on modifie les bords
-        
 
         fs, ft = adj[s], adj[t]
 
