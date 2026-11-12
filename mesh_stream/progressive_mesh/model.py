@@ -15,12 +15,53 @@ from .priority import Priority, RandomPriority, ChoosePriority
 from .mesh_reader import MeshReader
 
 
+def mesh_size(vertices: list, faces: list):
+    """
+    Approximate the size of the encoded mesh with quantization in bytes. 
+    Raw vertex coordinates (initially float32) are quantized with 16-bits.
+    Faces information is approximated using entropy of all indexes of the faces.
+
+    Args:
+        vertices (list[list[float]]): Vertices of the mesh. 
+        faces (list[obja.Face]): Faces of the mesh.
+
+    Returns:
+        int: Approximated size of the mesh in bytes.
+    """
+    n = len(vertices)
+    m = len(faces)
+    faces_bits = 3 * m * max(1, int(np.ceil(np.log2(n))))
+    vertices_bits = 3 * 16 * n
+    return int(np.ceil((faces_bits + vertices_bits) / 8))
+
+
+def vsplit_size(vertices: list):
+    """
+    Approximate the size of an encoded vertex split in bytes.
+    The PM paper notes that one split costs about log2(n) + 5 bits 
+    for the local connectivity.
+    And we add the geometry information of the two affected vertices :
+     - we use quantization with 16-bits for coordinates
+     - we use delta-encoding, which means we don't encode both vertices but the difference
+     - this leads to only 48 bits for the three coordinates
+
+    Args:
+        vertices (list[list[float]]): Vertices of the mesh.
+
+    Returns:
+        int: Approximated size of a vsplit in bytes.
+    """
+    n = len(vertices)
+    bits = max(1, int(np.ceil(np.log2(n)))) + 5 + 3 * 16
+    return int(np.ceil(bits / 8))
+
+
 def edge_collapse(vertices: list, faces: list, s: int, t: int):
     """
     Collapse an edge of the mesh and save the vertex split information. 
 
     Args:
-        vertices (list[int]): Vertices of the mesh. 
+        vertices (list[list[float]]): Vertices of the mesh. 
         faces (list[obja.Face]): Faces of the mesh.
         s (int): First vertex index of the edge.
         t (int): Second vertex index of the edge.
@@ -199,7 +240,6 @@ class ProgressiveMesh(obja.Model):
         """
         Update indices in previously stored vertex splits after removing vertex t and appending it at index t_new.
         """
-
         def remap(index):
             if index is None:
                 return None
@@ -224,6 +264,8 @@ class ProgressiveMesh(obja.Model):
             max_collapse (int): Maximum number of edge collapse steps.
             priority (Priority): A priority object defining the strategy to choose next edge to collapse.
         """
+        print(f"Approximation of the compressed mesh size before collapsing: {mesh_size(self.vertices, self.faces)} bytes.")
+
         self.compressed_vertices = copy.deepcopy(self.vertices)
         self.compressed_faces = copy.deepcopy(self.faces)
 
@@ -254,6 +296,7 @@ class ProgressiveMesh(obja.Model):
         Args:
             path (str): Path to OBJA output file.
         """
+        compressed_size = 0
         with open(path, "w") as output:
             output_model = obja.Output(output, random_color=True)
 
@@ -262,6 +305,9 @@ class ProgressiveMesh(obja.Model):
                 output_model.add_vertex(vi, v)
             for (fi, f) in enumerate(self.compressed_faces):
                 output_model.add_face(fi, face=f)
+
+            compressed_size += mesh_size(self.compressed_vertices, self.compressed_faces)
+            print(f"s {compressed_size}", file=output)
 
             # Write the transforms (vsplits)
             faces_buffer = copy.deepcopy(self.compressed_faces)
@@ -305,6 +351,10 @@ class ProgressiveMesh(obja.Model):
                 if r != None:
                     output_model.add_face(len(faces_buffer), obja.Face(s, r, t))
                     faces_buffer.append(obja.Face(s, r, t))
+
+                compressed_size += vsplit_size(output_model.vertex_mapping)
+                print(f"s {compressed_size}", file=output)
+        print(f"Approximation of the compressed mesh size written in obja: {compressed_size} bytes.")
 
 
 def main():
