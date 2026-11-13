@@ -12,14 +12,18 @@ pip install -r requirements.txt
 ```
 
 Create an obja model with desired method:
+- Decimate
 ```
 mkdir server/data
 python -m mesh_stream.decimate example/suzanne.obj server/data/suzanne-decimate.obja
 ```
 
+- Progressive mesh
+> Note : change to the desired priority in the file progressive_mesh/model.py
+> Usage : python -m mesh_stream.progressive_mesh <in_obj_file> <out_obja_file> <max_collapse>
 ```
 mkdir server/data
-python -m mesh_stream.progressive_mesh example/suzanne.obj server/data/suzanne-pm.obja
+python -m mesh_stream.progressive_mesh example/suzanne.obj server/data/suzanne-pm.obja 100
 ```
 
 
