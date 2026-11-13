@@ -36,3 +36,12 @@ Visualize transmission of the 3D models :
 ```
 http://localhost:8000/?data/suzanne-decimate.obja
 ```
+
+Utilisation de l'IA :
+
+- Debug des erreurs, warnings Pylance.
+- Autocomplétion Copilot.
+- Suggestion et utilisation de packages Python.
+- Correction de grammaire / orthographe du mini-rapport.
+- Aide à la compréhension et rappels de propriétés des mesh 3D : pas explication des papiers
+- Github Copilot, Claude, ChatGPT.
