@@ -545,8 +545,6 @@ class EnergyPriority(Priority):
 
         Args:
             K (float, optional): spring constant. Defaults to 1.0.
-            crep (float, optional): representation constant. Defaults to 1.0.
-            nb_iter (int, optional): number of iterations for optimization. Defaults to 100.
         """
         super().__init__()
         self.K = K # spring constant
@@ -580,7 +578,7 @@ class EnergyPriority(Priority):
         return energy
 
     @staticmethod
-    def _simulate_edge_collapse(vertices, faces, edge):
+    def _simulate_edge_collapse(vertices: list, faces: list, edge: tuple) -> tuple:
         """ simulate the collapse of an edge and return the new vertices and faces, allows to calculate the energy of the new mesh without modifying the original mesh
         Args:
             vertices (list): list of vertices
@@ -609,8 +607,10 @@ class EnergyPriority(Priority):
 
         return vertices, faces
     
-    def next(self, invalid_edges):
+    def next(self, invalid_edges: list ) -> tuple:
         """ select the next edge to collapse based on the energy function
+        Args:
+            invalid_edges (list): list of all edges not selectable to colapse
         Returns:
             tuple: the edge to collapse
         """
